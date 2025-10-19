@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Filtros Automáticos - Catálogo ELIT</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #0f172a; 
+            color: #f1f5f9; 
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #334155; 
+            border-radius: 5px; 
+            background-color: #1e293b;
+        }
+        .filter-info {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+        .filter-info i {
+            color: #fbbf24;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .filters input, .filters select {
+            padding: 8px;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            background-color: #1e293b;
+            color: #f1f5f9;
+        }
+        .product-card { 
+            border: 1px solid #334155; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            background-color: #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .product-info {
+            flex: 1;
+        }
+        .stock-info {
+            text-align: right;
+            font-weight: bold;
+        }
+        .stock-high { 
+            background: #064e3b; 
+            color: #6ee7b7; 
+            padding: 4px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #065f46;
+        }
+        .stock-low { 
+            background: #7f1d1d; 
+            color: #fca5a5; 
+            padding: 4px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #991b1b;
+        }
+        .stock-none { 
+            background: #374151; 
+            color: #9ca3af; 
+            padding: 4px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #4b5563; 
+        }
+        .results-info {
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #334155;
+            margin: 10px 0;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+        .highlight {
+            background-color: #3b82f6;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test de Filtros Automáticos</h1>
+    
+    <div class="filter-info">
+        <i class="fas fa-magic"></i> 
+        Los filtros se aplican automáticamente - ¡No necesitas hacer clic en "Aplicar"!
+    </div>
+    
+    <div class="test-section">
+        <h3>Filtros de Prueba</h3>
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="Buscar productos..." style="min-width: 200px;">
+            <select id="brandFilter">
+                <option value="">Todas las marcas</option>
+                <option value="ASUS">ASUS</option>
+                <option value="RAZER">RAZER</option>
+                <option value="LOGITECH">LOGITECH</option>
+                <option value="STEELSERIES">STEELSERIES</option>
+                <option value="NVIDIA">NVIDIA</option>
+                <option value="SAMSUNG">SAMSUNG</option>
+                <option value="CORSAIR">CORSAIR</option>
+                <option value="EVGA">EVGA</option>
+            </select>
+            <select id="categoryFilter">
+                <option value="">Todas las categorías</option>
+                <option value="Monitores">Monitores</option>
+                <option value="Periféricos">Periféricos</option>
+                <option value="Hardware">Hardware</option>
+                <option value="Gaming">Gaming</option>
+            </select>
+            <select id="stockFilter">
+                <option value="">Todos los niveles</option>
+                <option value="alto">Stock Alto</option>
+                <option value="bajo">Stock Bajo</option>
+                <option value="sin_stock">Sin Stock</option>
+            </select>
+        </div>
+        
+        <div class="results-info">
+            <strong>Resultados:</strong> <span id="resultsCount">8 productos</span> | 
+            <strong>Filtros activos:</strong> <span id="activeFilters">Ninguno</span>
+        </div>
+        
+        <div id="testProducts"></div>
+    </div>
+    
+    <script>
+        // Productos de prueba
+        let testProducts = [
+            {
+                id: 1,
+                nombre: "Monitor Gaming ASUS 24\"",
+                marca: "ASUS",
+                categoria: "Monitores",
+                stock_total: 150,
+                nivel_stock: "alto",
+                pvp_usd: 299.99
+            },
+            {
+                id: 2,
+                nombre: "Teclado Mecánico RAZER RGB",
+                marca: "RAZER",
+                categoria: "Periféricos",
+                stock_total: 0,
+                nivel_stock: "bajo",
+                pvp_usd: 149.99
+            },
+            {
+                id: 3,
+                nombre: "Mouse Inalámbrico LOGITECH",
+                marca: "LOGITECH",
+                categoria: "Periféricos",
+                stock_total: 75,
+                nivel_stock: "alto",
+                pvp_usd: 79.99
+            },
+            {
+                id: 4,
+                nombre: "Auriculares Gaming STEELSERIES",
+                marca: "STEELSERIES",
+                categoria: "Gaming",
+                stock_total: 25,
+                nivel_stock: "bajo",
+                pvp_usd: 199.99
+            },
+            {
+                id: 5,
+                nombre: "Placa de Video NVIDIA RTX 4070",
+                marca: "NVIDIA",
+                categoria: "Hardware",
+                stock_total: 200,
+                nivel_stock: "alto",
+                pvp_usd: 599.99
+            },
+            {
+                id: 6,
+                nombre: "SSD SAMSUNG 1TB NVMe",
+                marca: "SAMSUNG",
+                categoria: "Hardware",
+                stock_total: 0,
+                nivel_stock: "bajo",
+                pvp_usd: 129.99
+            },
+            {
+                id: 7,
+                nombre: "Memoria RAM CORSAIR 32GB",
+                marca: "CORSAIR",
+                categoria: "Hardware",
+                stock_total: 100,
+                nivel_stock: "alto",
+                pvp_usd: 249.99
+            },
+            {
+                id: 8,
+                nombre: "Fuente EVGA 750W 80+ Gold",
+                marca: "EVGA",
+                categoria: "Hardware",
+                stock_total: 50,
+                nivel_stock: "alto",
+                pvp_usd: 179.99
+            }
+        ];
+        
+        let filteredProducts = [...testProducts];
+        let currentFilters = {
+            search: '',
+            brand: '',
+            category: '',
+            stock: ''
+        };
+        
+        function createProductCard(product) {
+            const stockTotal = product.stock_total || 0;
+            const isOutOfStock = stockTotal === 0;
+            
+            let stockClass, stockText;
+            if (isOutOfStock) {
+                stockClass = 'stock-none';
+                stockText = 'Sin Stock';
+            } else {
+                stockClass = product.nivel_stock === 'alto' ? 'stock-high' : 'stock-low';
+                stockText = product.nivel_stock === 'alto' ? 'Stock Alto' : 'Stock Bajo';
+            }
+            
+            return `
+                <div class="product-card">
+                    <div class="product-info">
+                        <h4>${product.nombre}</h4>
+                        <p><strong>Marca:</strong> ${product.marca} | <strong>Categoría:</strong> ${product.categoria} | <strong>Precio:</strong> $${product.pvp_usd}</p>
+                    </div>
+                    <div class="stock-info">
+                        <div class="${stockClass}">${stockText}</div>
+                        <div style="margin-top: 5px; font-size: 0.9rem;">${stockTotal} unidades</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function applyFilters() {
+            console.log('Aplicando filtros automáticamente...', currentFilters);
+            
+            filteredProducts = testProducts.filter(product => {
+                // Filtro de búsqueda
+                if (currentFilters.search) {
+                    const searchTerm = currentFilters.search.toLowerCase();
+                    const searchableText = `${product.nombre} ${product.marca} ${product.categoria}`.toLowerCase();
+                    if (!searchableText.includes(searchTerm)) {
+                        return false;
+                    }
+                }
+                
+                // Filtro de marca
+                if (currentFilters.brand && product.marca !== currentFilters.brand) {
+                    return false;
+                }
+                
+                // Filtro de categoría
+                if (currentFilters.category && product.categoria !== currentFilters.category) {
+                    return false;
+                }
+                
+                // Filtro de stock
+                if (currentFilters.stock) {
+                    if (currentFilters.stock === 'sin_stock' && product.stock_total !== 0) {
+                        return false;
+                    } else if (currentFilters.stock !== 'sin_stock' && product.nivel_stock !== currentFilters.stock) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+            
+            // Ordenar por stock (mayor a menor)
+            filteredProducts.sort((a, b) => {
+                const stockA = a.stock_total || 0;
+                const stockB = b.stock_total || 0;
+                return stockB - stockA;
+            });
+            
+            renderProducts();
+            updateResultsInfo();
+        }
+        
+        function renderProducts() {
+            const container = document.getElementById('testProducts');
+            container.innerHTML = filteredProducts.map(createProductCard).join('');
+        }
+        
+        function updateResultsInfo() {
+            document.getElementById('resultsCount').textContent = `${filteredProducts.length} productos`;
+            
+            const activeFiltersList = [];
+            if (currentFilters.search) activeFiltersList.push(`Búsqueda: "${currentFilters.search}"`);
+            if (currentFilters.brand) activeFiltersList.push(`Marca: ${currentFilters.brand}`);
+            if (currentFilters.category) activeFiltersList.push(`Categoría: ${currentFilters.category}`);
+            if (currentFilters.stock) activeFiltersList.push(`Stock: ${currentFilters.stock}`);
+            
+            document.getElementById('activeFilters').innerHTML = activeFiltersList.length > 0 
+                ? activeFiltersList.map(f => `<span class="highlight">${f}</span>`).join(', ')
+                : 'Ninguno';
+        }
+        
+        // Event listeners para filtros automáticos
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            currentFilters.search = e.target.value;
+            applyFilters();
+        });
+        
+        document.getElementById('brandFilter').addEventListener('change', function(e) {
+            currentFilters.brand = e.target.value;
+            applyFilters();
+        });
+        
+        document.getElementById('categoryFilter').addEventListener('change', function(e) {
+            currentFilters.category = e.target.value;
+            applyFilters();
+        });
+        
+        document.getElementById('stockFilter').addEventListener('change', function(e) {
+            currentFilters.stock = e.target.value;
+            applyFilters();
+        });
+        
+        // Renderizar productos iniciales
+        applyFilters();
+    </script>
+</body>
+</html>

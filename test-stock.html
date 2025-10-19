@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Stock - Catálogo ELIT</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #0f172a; 
+            color: #f1f5f9; 
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #334155; 
+            border-radius: 5px; 
+            background-color: #1e293b;
+        }
+        .product-card { 
+            border: 1px solid #334155; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            background-color: #1e293b;
+        }
+        .stock-high { 
+            background: #064e3b; 
+            color: #6ee7b7; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #065f46;
+        }
+        .stock-low { 
+            background: #7f1d1d; 
+            color: #fca5a5; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #991b1b;
+        }
+        .stock-none { 
+            background: #374151; 
+            color: #9ca3af; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #4b5563; 
+        }
+        .btn-disabled { 
+            background: #4b5563; 
+            color: #9ca3af; 
+            cursor: not-allowed; 
+            opacity: 0.6; 
+            padding: 5px 10px; 
+            border: 1px solid #6b7280; 
+            border-radius: 3px; 
+        }
+        .btn-normal { 
+            background: #10b981; 
+            color: white; 
+            padding: 5px 10px; 
+            border: none; 
+            border-radius: 3px; 
+            cursor: pointer; 
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test de Funcionalidad de Stock</h1>
+    
+    <div class="test-section">
+        <h3>Productos de Prueba</h3>
+        <div id="testProducts"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Filtros de Stock</h3>
+        <button onclick="filterByStock('alto')">Stock Alto</button>
+        <button onclick="filterByStock('bajo')">Stock Bajo</button>
+        <button onclick="filterByStock('sin_stock')">Sin Stock</button>
+        <button onclick="showAllProducts()">Todos</button>
+    </div>
+    
+    <script>
+        // Productos de prueba con diferentes estados de stock
+        const testProducts = [
+            {
+                id: 1,
+                nombre: "Monitor Gaming 24\"",
+                marca: "ASUS",
+                categoria: "Monitores",
+                stock_total: 15,
+                nivel_stock: "alto",
+                pvp_usd: 299.99,
+                pvp_ars: 442485
+            },
+            {
+                id: 2,
+                nombre: "Teclado Mecánico RGB",
+                marca: "RAZER",
+                categoria: "Periféricos",
+                stock_total: 3,
+                nivel_stock: "bajo",
+                pvp_usd: 149.99,
+                pvp_ars: 221242
+            },
+            {
+                id: 3,
+                nombre: "Mouse Inalámbrico",
+                marca: "LOGITECH",
+                categoria: "Periféricos",
+                stock_total: 0,
+                nivel_stock: "bajo",
+                pvp_usd: 79.99,
+                pvp_ars: 117986
+            },
+            {
+                id: 4,
+                nombre: "Auriculares Gaming",
+                marca: "STEELSERIES",
+                categoria: "Audio",
+                stock_total: 0,
+                nivel_stock: "bajo",
+                pvp_usd: 199.99,
+                pvp_ars: 294985
+            },
+            {
+                id: 5,
+                nombre: "Placa de Video RTX 4070",
+                marca: "NVIDIA",
+                categoria: "Hardware",
+                stock_total: 8,
+                nivel_stock: "alto",
+                pvp_usd: 599.99,
+                pvp_ars: 884985
+            }
+        ];
+        
+        let filteredProducts = [...testProducts];
+        
+        function createProductCard(product) {
+            const stockTotal = product.stock_total || 0;
+            const isOutOfStock = stockTotal === 0;
+            
+            let stockClass, stockText;
+            if (isOutOfStock) {
+                stockClass = 'stock-none';
+                stockText = 'Sin Stock';
+            } else {
+                stockClass = product.nivel_stock === 'alto' ? 'stock-high' : 'stock-low';
+                stockText = product.nivel_stock === 'alto' ? 'Stock Alto' : 'Stock Bajo';
+            }
+            
+            const addToCartButton = isOutOfStock 
+                ? `<button class="btn-disabled" disabled title="Producto sin stock">
+                        <i>🚫</i> Sin Stock
+                    </button>`
+                : `<button class="btn-normal" onclick="addToCart(${product.id})">
+                        <i>🛒</i> Agregar
+                    </button>`;
+            
+            return `
+                <div class="product-card">
+                    <h4>${product.nombre}</h4>
+                    <p><strong>Marca:</strong> ${product.marca}</p>
+                    <p><strong>Categoría:</strong> ${product.categoria}</p>
+                    <p><strong>Precio:</strong> $${product.pvp_usd} USD / $${product.pvp_ars} ARS</p>
+                    <p><strong>Stock:</strong> 
+                        <span class="${stockClass}">${stockText}</span> 
+                        (${stockTotal} unidades)
+                    </p>
+                    <div>${addToCartButton}</div>
+                </div>
+            `;
+        }
+        
+        function renderProducts() {
+            const container = document.getElementById('testProducts');
+            container.innerHTML = filteredProducts.map(createProductCard).join('');
+        }
+        
+        function filterByStock(stockType) {
+            if (stockType === 'sin_stock') {
+                filteredProducts = testProducts.filter(product => (product.stock_total || 0) === 0);
+            } else {
+                filteredProducts = testProducts.filter(product => product.nivel_stock === stockType);
+            }
+            renderProducts();
+        }
+        
+        function showAllProducts() {
+            filteredProducts = [...testProducts];
+            renderProducts();
+        }
+        
+        function addToCart(productId) {
+            const product = testProducts.find(p => p.id === productId);
+            alert(`Agregado al carrito: ${product.nombre}`);
+        }
+        
+        // Renderizar productos iniciales
+        renderProducts();
+    </script>
+</body>
+</html>

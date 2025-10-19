@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Ordenamiento - Catálogo ELIT</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #0f172a; 
+            color: #f1f5f9; 
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #334155; 
+            border-radius: 5px; 
+            background-color: #1e293b;
+        }
+        .product-card { 
+            border: 1px solid #334155; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            background-color: #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .product-info {
+            flex: 1;
+        }
+        .stock-info {
+            text-align: right;
+            font-weight: bold;
+        }
+        .stock-high { 
+            background: #064e3b; 
+            color: #6ee7b7; 
+            padding: 4px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #065f46;
+        }
+        .stock-low { 
+            background: #7f1d1d; 
+            color: #fca5a5; 
+            padding: 4px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #991b1b;
+        }
+        .stock-none { 
+            background: #374151; 
+            color: #9ca3af; 
+            padding: 4px 8px; 
+            border-radius: 10px; 
+            font-size: 0.8rem; 
+            border: 1px solid #4b5563; 
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .sort-info {
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #334155;
+            margin: 10px 0;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+        .sort-info i {
+            color: #3b82f6;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test de Ordenamiento por Stock</h1>
+    
+    <div class="sort-info">
+        <i class="fas fa-sort-amount-down"></i> 
+        Los productos se ordenan automáticamente por stock de mayor a menor (orden decreciente)
+    </div>
+    
+    <div class="test-section">
+        <h3>Productos de Prueba (Ordenados por Stock)</h3>
+        <button onclick="sortByStock()">Reordenar por Stock</button>
+        <button onclick="shuffleProducts()">Mezclar Productos</button>
+        <div id="testProducts"></div>
+    </div>
+    
+    <script>
+        // Productos de prueba con diferentes cantidades de stock
+        let testProducts = [
+            {
+                id: 1,
+                nombre: "Monitor Gaming 24\"",
+                marca: "ASUS",
+                stock_total: 150,
+                nivel_stock: "alto",
+                pvp_usd: 299.99
+            },
+            {
+                id: 2,
+                nombre: "Teclado Mecánico RGB",
+                marca: "RAZER",
+                stock_total: 0,
+                nivel_stock: "bajo",
+                pvp_usd: 149.99
+            },
+            {
+                id: 3,
+                nombre: "Mouse Inalámbrico",
+                marca: "LOGITECH",
+                stock_total: 75,
+                nivel_stock: "alto",
+                pvp_usd: 79.99
+            },
+            {
+                id: 4,
+                nombre: "Auriculares Gaming",
+                marca: "STEELSERIES",
+                stock_total: 25,
+                nivel_stock: "bajo",
+                pvp_usd: 199.99
+            },
+            {
+                id: 5,
+                nombre: "Placa de Video RTX 4070",
+                marca: "NVIDIA",
+                stock_total: 200,
+                nivel_stock: "alto",
+                pvp_usd: 599.99
+            },
+            {
+                id: 6,
+                nombre: "SSD 1TB NVMe",
+                marca: "SAMSUNG",
+                stock_total: 0,
+                nivel_stock: "bajo",
+                pvp_usd: 129.99
+            },
+            {
+                id: 7,
+                nombre: "Memoria RAM 32GB",
+                marca: "CORSAIR",
+                stock_total: 100,
+                nivel_stock: "alto",
+                pvp_usd: 249.99
+            },
+            {
+                id: 8,
+                nombre: "Fuente 750W 80+ Gold",
+                marca: "EVGA",
+                stock_total: 50,
+                nivel_stock: "alto",
+                pvp_usd: 179.99
+            }
+        ];
+        
+        function createProductCard(product) {
+            const stockTotal = product.stock_total || 0;
+            const isOutOfStock = stockTotal === 0;
+            
+            let stockClass, stockText;
+            if (isOutOfStock) {
+                stockClass = 'stock-none';
+                stockText = 'Sin Stock';
+            } else {
+                stockClass = product.nivel_stock === 'alto' ? 'stock-high' : 'stock-low';
+                stockText = product.nivel_stock === 'alto' ? 'Stock Alto' : 'Stock Bajo';
+            }
+            
+            return `
+                <div class="product-card">
+                    <div class="product-info">
+                        <h4>${product.nombre}</h4>
+                        <p><strong>Marca:</strong> ${product.marca} | <strong>Precio:</strong> $${product.pvp_usd}</p>
+                    </div>
+                    <div class="stock-info">
+                        <div class="${stockClass}">${stockText}</div>
+                        <div style="margin-top: 5px; font-size: 0.9rem;">${stockTotal} unidades</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderProducts() {
+            const container = document.getElementById('testProducts');
+            container.innerHTML = testProducts.map(createProductCard).join('');
+        }
+        
+        function sortByStock() {
+            // Ordenar por stock de mayor a menor (orden decreciente)
+            testProducts.sort((a, b) => {
+                const stockA = a.stock_total || 0;
+                const stockB = b.stock_total || 0;
+                return stockB - stockA; // Orden decreciente (mayor a menor)
+            });
+            renderProducts();
+            console.log('Productos ordenados por stock (mayor a menor):', testProducts.map(p => `${p.nombre}: ${p.stock_total}`));
+        }
+        
+        function shuffleProducts() {
+            // Mezclar productos para demostrar el ordenamiento
+            for (let i = testProducts.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [testProducts[i], testProducts[j]] = [testProducts[j], testProducts[i]];
+            }
+            renderProducts();
+            console.log('Productos mezclados');
+        }
+        
+        // Renderizar productos iniciales ordenados
+        sortByStock();
+    </script>
+</body>
+</html>
