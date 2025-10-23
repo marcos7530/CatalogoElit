@@ -22,25 +22,29 @@ let appState = {
         search: '',
         brand: '',
         category: '',
-        stock: '',
-        limit: 100
+        subcategory: '',
+        stock: ''
     },
     brands: new Set(),
-    categories: new Set()
+    categories: new Set(),
+    subcategories: new Set(),
+    // Nuevas propiedades para actualización en tiempo real
+    lastUpdate: null,
+    autoRefreshInterval: null,
+    autoRefreshEnabled: true,
+    refreshInterval: 30000, // 30 segundos por defecto
+    // Cotización del dólar
+    currentCotization: null
 };
 
 // Elementos del DOM
 const elements = {
-    authSection: document.getElementById('authSection'),
     productsSection: document.getElementById('productsSection'),
-    authForm: document.getElementById('authForm'),
-    userIdInput: document.getElementById('userId'),
-    tokenInput: document.getElementById('token'),
     searchInput: document.getElementById('searchInput'),
     brandFilter: document.getElementById('brandFilter'),
     categoryFilter: document.getElementById('categoryFilter'),
+    subcategoryFilter: document.getElementById('subcategoryFilter'),
     stockFilter: document.getElementById('stockFilter'),
-    limitInput: document.getElementById('limitInput'),
     applyFiltersBtn: document.getElementById('applyFilters'),
     productsGrid: document.getElementById('productsGrid'),
     loadingSpinner: document.getElementById('loadingSpinner'),
@@ -54,14 +58,12 @@ const elements = {
     modalTitle: document.getElementById('modalTitle'),
     modalBody: document.getElementById('modalBody'),
     modalClose: document.getElementById('modalClose'),
-    configBtn: document.getElementById('configBtn'),
-    reloadBtn: document.getElementById('reloadBtn'),
     loadingText: document.getElementById('loadingText'),
     loadingProgress: document.getElementById('loadingProgress'),
     progressFill: document.getElementById('progressFill'),
     progressText: document.getElementById('progressText'),
-    loadAllBtn: document.getElementById('loadAllBtn'),
-    clearFiltersBtn: document.getElementById('clearFilters')
+    clearFiltersBtn: document.getElementById('clearFilters'),
+    currencyDisplay: document.querySelector('.currency')
 };
 
 // Inicialización de la aplicación
@@ -76,15 +78,12 @@ function initializeApp() {
 }
 
 function setupEventListeners() {
-    // Formulario de autenticación
-    elements.authForm.addEventListener('submit', handleAuthentication);
-    
     // Filtros y búsqueda
     elements.searchInput.addEventListener('input', debounce(handleSearch, 300));
     elements.brandFilter.addEventListener('change', handleFilterChange);
     elements.categoryFilter.addEventListener('change', handleFilterChange);
+    elements.subcategoryFilter.addEventListener('change', handleFilterChange);
     elements.stockFilter.addEventListener('change', handleFilterChange);
-    elements.limitInput.addEventListener('change', handleFilterChange);
     elements.applyFiltersBtn.addEventListener('click', applyFilters);
     
     // Paginación
@@ -106,23 +105,10 @@ function setupEventListeners() {
         }
     });
     
-    // Botón de configuración
-    elements.configBtn.addEventListener('click', toggleConfigPanel);
-    
-    // Botón de recargar
-    elements.reloadBtn.addEventListener('click', () => {
-        console.log('Recargando todos los productos manualmente...');
-        loadProducts();
-    });
-    
-    // Botón de cargar todos
-    elements.loadAllBtn.addEventListener('click', async () => {
-        console.log('Cargando todos los productos...');
-        await loadAllProductsWithPagination();
-    });
-    
     // Botón para limpiar filtros
     elements.clearFiltersBtn.addEventListener('click', clearAllFilters);
+    
+    // La actualización automática funciona en segundo plano sin controles visibles
     
     // El filtro de categoría se maneja a través de handleFilterChange y applyFilters
 }
@@ -131,15 +117,14 @@ function checkStoredCredentials() {
     // Usar credenciales por defecto automáticamente
     appState.isAuthenticated = true;
     
-    // Llenar los campos del formulario con las credenciales por defecto
-    elements.userIdInput.value = appState.userId;
-    elements.tokenInput.value = appState.token;
-    
     // Mostrar directamente la sección de productos
     showProductsSection();
     
     // Probar conexión y cargar productos automáticamente
     testConnectionAndLoadProducts();
+    
+    // Inicializar actualización automática
+    initializeAutoRefresh();
 }
 
 // Función para probar la conexión y cargar productos
@@ -159,43 +144,6 @@ async function testConnectionAndLoadProducts() {
     }
 }
 
-// Manejo de autenticación
-async function handleAuthentication(e) {
-    e.preventDefault();
-    
-    const userId = elements.userIdInput.value.trim();
-    const token = elements.tokenInput.value.trim();
-    
-    if (!userId || !token) {
-        showError('Por favor, completa todos los campos');
-        return;
-    }
-    
-    showLoading(true);
-    
-    try {
-        // Guardar credenciales
-        localStorage.setItem('elit_userId', userId);
-        localStorage.setItem('elit_token', token);
-        
-        appState.userId = userId;
-        appState.token = token;
-        appState.isAuthenticated = true;
-        
-        // Probar la conexión cargando productos
-        await loadProducts();
-        
-        showProductsSection();
-        hideError();
-        
-    } catch (error) {
-        console.error('Error de autenticación:', error);
-        showError('Error de autenticación. Verifica tus credenciales.');
-        appState.isAuthenticated = false;
-    } finally {
-        showLoading(false);
-    }
-}
 
 // Cargar productos desde la API con paginación
 async function loadProducts() {
@@ -424,6 +372,9 @@ async function loadAllProducts() {
     appState.filteredProducts = [...appState.products];
     appState.totalItems = appState.products.length;
     
+    // Actualizar cotización del dólar
+    updateCotization();
+    
     console.log(`Carga completa: ${appState.products.length} productos ordenados por stock (mayor a menor)`);
 }
 
@@ -520,6 +471,7 @@ async function loadProductsByCategory(category) {
 function extractFilters() {
     appState.brands.clear();
     appState.categories.clear();
+    appState.subcategories.clear();
     
     appState.products.forEach(product => {
         if (product.marca) {
@@ -528,10 +480,14 @@ function extractFilters() {
         if (product.categoria) {
             appState.categories.add(product.categoria);
         }
+        if (product.sub_categoria) {
+            appState.subcategories.add(product.sub_categoria);
+        }
     });
     
     console.log('Marcas extraídas:', Array.from(appState.brands));
     console.log('Categorías extraídas:', Array.from(appState.categories));
+    console.log('Subcategorías extraídas:', Array.from(appState.subcategories));
 }
 
 // Actualizar opciones de filtros en el DOM
@@ -553,6 +509,42 @@ function updateFilterOptions() {
         option.textContent = category;
         elements.categoryFilter.appendChild(option);
     });
+    
+    // Actualizar filtro de subcategorías basado en la categoría seleccionada
+    updateSubcategoryOptions();
+}
+
+// Actualizar opciones de subcategorías basado en la categoría seleccionada
+function updateSubcategoryOptions() {
+    elements.subcategoryFilter.innerHTML = '<option value="">Todas las subcategorías</option>';
+    
+    // Si hay una categoría seleccionada, filtrar subcategorías
+    if (appState.filters.category) {
+        const subcategoriesForCategory = new Set();
+        
+        appState.products.forEach(product => {
+            if (product.categoria === appState.filters.category && product.sub_categoria) {
+                subcategoriesForCategory.add(product.sub_categoria);
+            }
+        });
+        
+        Array.from(subcategoriesForCategory).sort().forEach(subcategory => {
+            const option = document.createElement('option');
+            option.value = subcategory;
+            option.textContent = subcategory;
+            elements.subcategoryFilter.appendChild(option);
+        });
+        
+        console.log(`Subcategorías para "${appState.filters.category}":`, Array.from(subcategoriesForCategory));
+    } else {
+        // Si no hay categoría seleccionada, mostrar todas las subcategorías
+        Array.from(appState.subcategories).sort().forEach(subcategory => {
+            const option = document.createElement('option');
+            option.value = subcategory;
+            option.textContent = subcategory;
+            elements.subcategoryFilter.appendChild(option);
+        });
+    }
 }
 
 // Manejar búsqueda
@@ -601,10 +593,20 @@ function hideSearchSuggestions() {
 
 // Manejar cambios en filtros
 function handleFilterChange(e) {
-    const filterName = e.target.id.replace('Filter', '').replace('Input', '');
+    const filterName = e.target.id.replace('Filter', '');
     appState.filters[filterName] = e.target.value;
     
     console.log(`Filtro ${filterName} cambiado a:`, e.target.value);
+    
+    // Si se cambió la categoría, actualizar subcategorías y limpiar subcategoría seleccionada
+    if (filterName === 'category') {
+        // Limpiar subcategoría seleccionada
+        appState.filters.subcategory = '';
+        elements.subcategoryFilter.value = '';
+        
+        // Actualizar opciones de subcategorías
+        updateSubcategoryOptions();
+    }
     
     // Aplicar filtros automáticamente
     applyFilters();
@@ -648,6 +650,12 @@ function applyFilters() {
         console.log('Después de filtro de categoría:', filtered.length);
     }
     
+    // Filtro de subcategoría
+    if (appState.filters.subcategory) {
+        filtered = filtered.filter(product => product.sub_categoria === appState.filters.subcategory);
+        console.log('Después de filtro de subcategoría:', filtered.length);
+    }
+    
     // Filtro de stock
     if (appState.filters.stock) {
         if (appState.filters.stock === 'sin_stock') {
@@ -684,16 +692,16 @@ function clearAllFilters() {
         search: '',
         brand: '',
         category: '',
-        stock: '',
-        limit: 100
+        subcategory: '',
+        stock: ''
     };
     
     // Limpiar los campos del formulario
     elements.searchInput.value = '';
     elements.brandFilter.value = '';
     elements.categoryFilter.value = '';
+    elements.subcategoryFilter.value = '';
     elements.stockFilter.value = '';
-    elements.limitInput.value = '100';
     
     // Restaurar todos los productos y ordenarlos por stock
     appState.filteredProducts = [...appState.products];
@@ -963,20 +971,9 @@ function updateResultsInfo() {
 
 // Mostrar sección de productos
 function showProductsSection() {
-    elements.authSection.style.display = 'none';
     elements.productsSection.style.display = 'block';
 }
 
-// Alternar panel de configuración
-function toggleConfigPanel() {
-    if (elements.authSection.style.display === 'none' || elements.authSection.style.display === '') {
-        elements.authSection.style.display = 'block';
-        elements.productsSection.style.display = 'none';
-    } else {
-        elements.authSection.style.display = 'none';
-        elements.productsSection.style.display = 'block';
-    }
-}
 
 // Mostrar/ocultar loading
 function showLoading(show) {
@@ -1160,6 +1157,276 @@ const additionalStyles = `
         }
     }
 `;
+
+// ===== FUNCIONES DE ACTUALIZACIÓN EN TIEMPO REAL =====
+
+// Iniciar actualización automática
+function startAutoRefresh() {
+    if (appState.autoRefreshInterval) {
+        clearInterval(appState.autoRefreshInterval);
+    }
+    
+    if (appState.autoRefreshEnabled && appState.isAuthenticated) {
+        console.log(`Iniciando actualización automática cada ${appState.refreshInterval / 1000} segundos`);
+        
+        appState.autoRefreshInterval = setInterval(async () => {
+            try {
+                await refreshProducts();
+            } catch (error) {
+                console.error('Error en actualización automática:', error);
+                showNotification('Error en actualización automática', 'error');
+            }
+        }, appState.refreshInterval);
+        
+        updateRefreshStatus('Actualización automática activa');
+    }
+}
+
+// Detener actualización automática
+function stopAutoRefresh() {
+    if (appState.autoRefreshInterval) {
+        clearInterval(appState.autoRefreshInterval);
+        appState.autoRefreshInterval = null;
+        console.log('Actualización automática detenida');
+        updateRefreshStatus('Actualización automática desactivada');
+    }
+}
+
+// Alternar actualización automática (función interna)
+function toggleAutoRefresh() {
+    appState.autoRefreshEnabled = !appState.autoRefreshEnabled;
+    
+    if (appState.autoRefreshEnabled) {
+        startAutoRefresh();
+        console.log('Actualización automática activada');
+    } else {
+        stopAutoRefresh();
+        console.log('Actualización automática desactivada');
+    }
+}
+
+// Actualizar intervalo de actualización (función interna)
+function updateRefreshInterval(newIntervalSeconds) {
+    const newInterval = newIntervalSeconds * 1000;
+    
+    if (newInterval >= 10000) { // Mínimo 10 segundos
+        appState.refreshInterval = newInterval;
+        
+        if (appState.autoRefreshEnabled) {
+            startAutoRefresh(); // Reiniciar con nuevo intervalo
+        }
+        
+        console.log(`Intervalo actualizado a ${newInterval / 1000} segundos`);
+    } else {
+        console.log('El intervalo mínimo es de 10 segundos');
+    }
+}
+
+// Refrescar productos (versión optimizada)
+async function refreshProducts() {
+    if (!appState.isAuthenticated) return;
+    
+    console.log('Refrescando productos...');
+    
+    try {
+        // Guardar estado actual de filtros
+        const currentFilters = { ...appState.filters };
+        const currentPage = appState.currentPage;
+        
+        // Cargar productos actualizados
+        await loadAllProducts();
+        
+        // Restaurar filtros
+        appState.filters = currentFilters;
+        appState.currentPage = currentPage;
+        
+        // Aplicar filtros actuales
+        applyFilters();
+        
+        // Actualizar timestamp
+        appState.lastUpdate = new Date();
+        updateLastUpdateDisplay();
+        
+        // Extraer y actualizar filtros
+        extractFilters();
+        updateFilterOptions();
+        
+        // Actualizar cotización del dólar
+        updateCotization();
+        
+        console.log('Productos actualizados exitosamente');
+        updateRefreshStatus('Última actualización: ahora');
+        
+    } catch (error) {
+        console.error('Error refrescando productos:', error);
+        updateRefreshStatus('Error en última actualización');
+        throw error;
+    }
+}
+
+// Actualizar display de última actualización (solo en consola)
+function updateLastUpdateDisplay() {
+    if (appState.lastUpdate) {
+        const now = new Date();
+        const diff = Math.floor((now - appState.lastUpdate) / 1000);
+        
+        let timeText;
+        if (diff < 60) {
+            timeText = 'hace menos de 1 minuto';
+        } else if (diff < 3600) {
+            timeText = `hace ${Math.floor(diff / 60)} minutos`;
+        } else {
+            timeText = `hace ${Math.floor(diff / 3600)} horas`;
+        }
+        
+        console.log(`Última actualización: ${timeText}`);
+    }
+}
+
+// Actualizar estado de actualización (solo en consola)
+function updateRefreshStatus(status) {
+    console.log(`Estado de actualización: ${status}`);
+}
+
+// Detectar cambios en stock (comparar productos)
+function detectStockChanges(oldProducts, newProducts) {
+    const changes = [];
+    
+    newProducts.forEach(newProduct => {
+        const oldProduct = oldProducts.find(p => p.id === newProduct.id);
+        
+        if (oldProduct) {
+            const oldStock = oldProduct.stock_total || 0;
+            const newStock = newProduct.stock_total || 0;
+            
+            if (oldStock !== newStock) {
+                changes.push({
+                    product: newProduct,
+                    oldStock,
+                    newStock,
+                    change: newStock - oldStock
+                });
+            }
+        }
+    });
+    
+    return changes;
+}
+
+// Mostrar notificaciones de cambios de stock
+function showStockChangeNotifications(changes) {
+    changes.forEach(change => {
+        const { product, oldStock, newStock, change: stockChange } = change;
+        
+        let message, type;
+        if (stockChange > 0) {
+            message = `Stock aumentó: ${product.nombre} (+${stockChange})`;
+            type = 'success';
+        } else {
+            message = `Stock disminuyó: ${product.nombre} (${stockChange})`;
+            type = 'warning';
+        }
+        
+        showNotification(message, type);
+    });
+}
+
+// Inicializar actualización automática cuando la app esté lista
+function initializeAutoRefresh() {
+    if (appState.isAuthenticated && appState.autoRefreshEnabled) {
+        startAutoRefresh();
+        console.log('Actualización automática iniciada en segundo plano');
+    }
+}
+
+// ===== FUNCIONES DE WEBSOCKET (OPCIÓN AVANZADA) =====
+
+// Conectar WebSocket para actualizaciones en tiempo real
+function connectWebSocket() {
+    // Esta función se puede implementar si ELIT proporciona WebSocket
+    // Por ahora es un placeholder para futuras implementaciones
+    console.log('WebSocket no disponible en esta versión');
+}
+
+// ===== FUNCIONES DE VISIBILIDAD DE PÁGINA =====
+
+// Detectar cuando la página se vuelve visible/oculta
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        console.log('Página oculta - pausando actualizaciones');
+        stopAutoRefresh();
+    } else {
+        console.log('Página visible - reanudando actualizaciones');
+        if (appState.autoRefreshEnabled) {
+            startAutoRefresh();
+            // Refrescar inmediatamente al volver a la página
+            refreshProducts();
+        }
+    }
+});
+
+// Detectar cuando la ventana pierde/gana foco
+window.addEventListener('focus', function() {
+    if (appState.autoRefreshEnabled && appState.isAuthenticated) {
+        console.log('Ventana enfocada - refrescando productos');
+        refreshProducts();
+    }
+});
+
+// Actualizar cotización del dólar
+function updateCotization() {
+    // Buscar cotización en todos los productos
+    let cotization = null;
+    
+    for (const product of appState.products) {
+        if (product.cotizacion && product.cotizacion > 0) {
+            cotization = product.cotizacion;
+            break; // Usar la primera cotización válida encontrada
+        }
+    }
+    
+    if (cotization) {
+        const oldCotization = appState.currentCotization;
+        appState.currentCotization = cotization;
+        
+        if (elements.currencyDisplay) {
+            elements.currencyDisplay.textContent = `USD $${formatPrice(cotization)}`;
+        }
+        
+        // Detectar cambios en la cotización
+        if (oldCotization && oldCotization !== cotization) {
+            detectCotizationChange(oldCotization, cotization);
+        }
+        
+        console.log(`Cotización actualizada: USD $${formatPrice(cotization)}`);
+    } else {
+        console.log('No se encontró cotización válida en los productos');
+        // Mantener la cotización anterior si no se encuentra una nueva
+        if (elements.currencyDisplay && !appState.currentCotization) {
+            elements.currencyDisplay.textContent = 'USD $0.00';
+        }
+    }
+}
+
+// Detectar cambios en la cotización
+function detectCotizationChange(oldCotization, newCotization) {
+    if (oldCotization && newCotization && oldCotization !== newCotization) {
+        const change = newCotization - oldCotization;
+        const changePercent = ((change / oldCotization) * 100).toFixed(2);
+        
+        let message, type;
+        if (change > 0) {
+            message = `Cotización subió: USD $${formatPrice(newCotization)} (+${changePercent}%)`;
+            type = 'success';
+        } else {
+            message = `Cotización bajó: USD $${formatPrice(newCotization)} (${changePercent}%)`;
+            type = 'warning';
+        }
+        
+        showNotification(message, type);
+        console.log(`Cambio en cotización: ${oldCotization} → ${newCotization} (${changePercent}%)`);
+    }
+}
 
 // Agregar estilos adicionales al documento
 const styleSheet = document.createElement('style');

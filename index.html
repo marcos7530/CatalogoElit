@@ -14,22 +14,17 @@
                 <h1><i class="fas fa-store"></i> Catálogo ELIT</h1>
             </div>
             <nav class="nav">
-                <a href="#productos" class="nav-link">Productos</a>
-                <a href="#ofertas" class="nav-link">Ofertas</a>
                 <a href="#empresa" class="nav-link">Empresa</a>
             </nav>
             <div class="header-actions">
                 <div class="currency-info">
-                    <span class="currency">USD $1475.00</span>
+                    <span class="currency">USD $XXX.XX</span>
                     <i class="fas fa-info-circle"></i>
                 </div>
                 <div class="user-info">
                     <span class="username">Usuario ELIT</span>
                     <i class="fas fa-user-circle"></i>
                 </div>
-                <button class="btn-config" id="configBtn" title="Configurar API">
-                    <i class="fas fa-cog"></i>
-                </button>
                 <div class="cart">
                     <i class="fas fa-shopping-cart"></i>
                     <span class="cart-count">0</span>
@@ -40,42 +35,9 @@
 
     <main class="main">
         <div class="container">
-            <!-- Panel de Autenticación (Oculto por defecto) -->
-            <section class="auth-section" id="authSection" style="display: none;">
-                <div class="auth-card">
-                    <h2><i class="fas fa-key"></i> Configuración de API</h2>
-                    <p>Ingresa tus credenciales para acceder al catálogo de productos ELIT</p>
-                    
-                    <form class="auth-form" id="authForm">
-                        <div class="form-group">
-                            <label for="userId">User ID:</label>
-                            <input type="text" id="userId" name="userId" placeholder="Ej: 3006" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="token">Token:</label>
-                            <input type="text" id="token" name="token" placeholder="Ej: geua36y0u" required>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-sign-in-alt"></i> Conectar con API
-                        </button>
-                    </form>
-                    
-                    <div class="auth-info">
-                        <h3>Información de la API</h3>
-                        <ul>
-                            <li><i class="fas fa-check"></i> Integración automática y en tiempo real</li>
-                            <li><i class="fas fa-check"></i> Miles de productos en stock</li>
-                            <li><i class="fas fa-check"></i> Compatible con Facebook e Instagram</li>
-                            <li><i class="fas fa-check"></i> Gratuito para clientes ELIT</li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
 
             <!-- Panel Principal de Productos -->
-            <section class="products-section" id="productsSection" style="display: none;">
+            <section class="products-section" id="productsSection">
                 <div class="section-header">
                     <h2><i class="fas fa-boxes"></i> Catálogo de Productos</h2>
                     <div class="header-actions">
@@ -83,12 +45,6 @@
                             <span class="status-indicator connected"></span>
                             <span>API Conectada</span>
                         </div>
-                        <button class="btn btn-sm btn-secondary" id="reloadBtn" title="Recargar todos los productos">
-                            <i class="fas fa-sync-alt"></i> Recargar
-                        </button>
-                        <button class="btn btn-sm btn-primary" id="loadAllBtn" title="Forzar recarga de todos los productos">
-                            <i class="fas fa-sync-alt"></i> Recargar Todo
-                        </button>
                     </div>
                 </div>
 
@@ -111,14 +67,16 @@
                             <option value="">Todas las categorías</option>
                         </select>
                         
+                        <select id="subcategoryFilter">
+                            <option value="">Todas las subcategorías</option>
+                        </select>
+                        
                         <select id="stockFilter">
                             <option value="">Todos los niveles</option>
                             <option value="alto">Stock Alto</option>
                             <option value="bajo">Stock Bajo</option>
                             <option value="sin_stock">Sin Stock</option>
                         </select>
-                        
-                        <input type="number" id="limitInput" placeholder="Límite (máx 100)" min="1" max="100" value="100">
                     </div>
                     
                     <button class="btn btn-secondary" id="applyFilters" style="display: none;">
